@@ -1,17 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, RegexHandler
-from configparser import ConfigParser
+from telegram import Update
+from telegram.ext import CallbackContext, Updater, MessageHandler, Filters
 
 import logging
 import re
-import random
 
 import RPi.GPIO as GPIO 
-
-cfg = ConfigParser()
-cfg.read('bot.cfg')
 
 DOOR_PIN = 23
 DOOR_OPEN_MSG   = 'Ovi on auki.'
@@ -27,28 +23,19 @@ def setupDoorMonitor():
 def getDoorStateMessage():
     return DOOR_OPEN_MSG if GPIO.input(DOOR_PIN) else DOOR_CLOSED_MSG
 
-def ovi(bot, update):
-    bot.sendMessage(chat_id=update.message.chat_id, text=getDoorStateMessage())
-
-def skiltaa(bot, update):
-    msg = update.message
-    if msg.text is not None:
-        if 'skiltua' in msg.text.lower():
-            bot.sendMessage(chat_id=update.message.chat_id, text="skiltua")
+def ovi(update: Update, context: CallbackContext):
+    context.bot.sendMessage(chat_id=update.effective_chat.id, text=getDoorStateMessage())
 
 def main():
     setupDoorMonitor()
 
-    updater = Updater(cfg['TELEGRAM']['token'])
+    updater = Updater("YOUR_TOKEN_HERE", use_context=True)
     dispatcher = updater.dispatcher
     logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
 
     ovire = re.compile(r'^/ovi$', flags=re.IGNORECASE)
-    ovi_handler = RegexHandler(ovire, ovi)
+    ovi_handler = MessageHandler(Filters.regex(ovire), ovi)
     dispatcher.add_handler(ovi_handler)
-
-    skiltu_handler = MessageHandler(Filters.all, skiltaa)
-    dispatcher.add_handler(skiltu_handler)
 
     updater.start_polling()
     updater.idle()
